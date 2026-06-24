@@ -113,6 +113,19 @@ data/bands/band_126.tif   # 950 nm
 
 ## 🚀 Quickstart
 
+### Easiest: one command (for researchers, Windows)
+
+```powershell
+# Full setup + build a demo dataset + run analysis + open the web app
+.\setup.ps1 -Demo
+```
+
+`setup.ps1` checks Python, creates the environment, installs everything, and
+launches the web app — no developer experience required. Later, just run
+`.\run.ps1` to reopen the app. (Use `.\setup.ps1 -NoLaunch` to install only.)
+
+### Manual setup
+
 ```powershell
 # 1. environment
 python -m venv .venv
