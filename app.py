@@ -113,8 +113,8 @@ def _open_stack(band_dir, band_glob, wl_csv, explicit_key):
 # --------------------------------------------------------------------------- #
 # Tabs
 # --------------------------------------------------------------------------- #
-tab_data, tab_ndvi, tab_train, tab_predict = st.tabs(
-    ["📂 Data", "🌱 NDVI / Canopy", "🤖 Train", "🗺️ Stress Map"])
+tab_data, tab_ndvi, tab_train, tab_predict, tab_report = st.tabs(
+    ["📂 Data", "🌱 NDVI / Canopy", "🤖 Train", "🗺️ Stress Map", "📄 Report"])
 
 # ---- Data ----------------------------------------------------------------- #
 with tab_data:
@@ -262,3 +262,30 @@ with tab_predict:
                    ", ".join(f"{c}={i+1}" for i, c in enumerate(classes)) +
                    ", soil/nodata=0")
         st.success(f"Saved {out_path}")
+
+
+# ---- Report --------------------------------------------------------------- #
+with tab_report:
+    st.subheader("PDF analysis report")
+    st.write("Bundles the spectra, band ranking, model scores and stress map "
+             "into one shareable PDF for researchers.")
+    out_dir = cfg.path("output", "dir")
+    results_path = os.path.join(out_dir, cfg.get("output", "results_csv"))
+    if not os.path.exists(results_path):
+        st.info("Run the pipeline first (Train tab).")
+    elif st.button("📄 Generate PDF report", type="primary"):
+        from aquaspectra.report import build_report
+        meta = {
+            "n_bands": stack.n_bands,
+            "wl_range": f"{stack.wavelengths.min():.1f} - "
+                        f"{stack.wavelengths.max():.1f} nm",
+            "grid": f"{stack.width} x {stack.height}",
+            "crs": stack.crs,
+        }
+        with st.spinner("Building report…"):
+            pdf_path = build_report(cfg, stack_meta=meta)
+        st.success(f"Report saved: {pdf_path}")
+        with open(pdf_path, "rb") as fh:
+            st.download_button("⬇ Download report", fh.read(),
+                               file_name=os.path.basename(pdf_path),
+                               mime="application/pdf")

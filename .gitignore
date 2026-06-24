@@ -1,12 +1,18 @@
 .venv/
 __pycache__/
 *.pyc
-outputs/*.tif
-outputs/*.csv
-outputs/*.joblib
-outputs/*.txt
-outputs/*.log
+outputs/
 data/bands/
+
+# Proprietary requestor data — real field imagery, GPS coords, local paths.
+# Never redistribute (repo is public).
+data/*.geojson
+config.real.yaml
+tools/analyze_real_plot.py
+tools/plot_stress_index.py
+tools/moisture_index.py
+tools/real_plot_report.py
+tools/make_demo_plots.py
 *.egg-info/
 .streamlit/secrets.toml
 

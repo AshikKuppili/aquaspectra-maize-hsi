@@ -29,6 +29,19 @@ def _natural_key(s: str):
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
 
 
+# Matches a wavelength embedded in a filename, e.g.:
+#   Band_071_521.422nm.tif  -> 521.422
+#   B12_730nm.tif           -> 730
+#   band_055_700.0_nm.tif   -> 700.0
+_WL_IN_NAME = re.compile(r"(\d+(?:\.\d+)?)\s*_?nm", re.IGNORECASE)
+
+
+def wavelength_from_filename(path: str) -> float | None:
+    """Parse a wavelength (nm) embedded in a band filename, or None."""
+    m = _WL_IN_NAME.search(os.path.basename(path))
+    return float(m.group(1)) if m else None
+
+
 @dataclass
 class BandRef:
     path: str
@@ -98,8 +111,13 @@ class BandStack:
                     "band files were found; counts must match."
                 )
         else:
-            # Fall back to 1-based band indices as pseudo-wavelengths.
-            wl = list(range(1, len(files) + 1))
+            # Try parsing wavelengths embedded in filenames (e.g.
+            # 'Band_071_521.422nm.tif'); fall back to 1-based band indices.
+            parsed = [wavelength_from_filename(f) for f in files]
+            if all(p is not None for p in parsed):
+                wl = parsed
+            else:
+                wl = list(range(1, len(files) + 1))
 
         refs = [BandRef(path=f, wavelength_nm=float(w)) for f, w in zip(files, wl)]
         return cls(refs)

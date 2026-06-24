@@ -96,6 +96,44 @@ insight — without writing code. It is useful for:
 a folder → mark NS/GFWS sub-plot boundaries → run `setup.ps1` → read the stress
 map and the ranked bands. From imagery to insight in minutes.
 
+### 🔗 Connecting the dots — from one flight to many answers
+
+The pieces are designed to build on each other, so a researcher gets value at
+**every** stage — even before any labels exist:
+
+```
+ Drone band TIFs ─┬─► NDVI ........... where is canopy vs soil?      (no labels)
+                  ├─► Moisture (NDWI) . where is the canopy dry?      (no labels)
+                  ├─► Stress index .... relative stress per pixel     (no labels)
+                  │
+                  └─► + Ground-truth labels ─► RFE ─┬─► RF model  ─┐
+                                                    └─► SVM model ─┴─► best model
+                                                         │                │
+                                                  which bands matter   stress MAP
+```
+
+**1. Day one, zero labels.** The moment the TIFs land, `ndvi`, `moisture`, and
+the stress index already map *where* the field is bare, dry, or struggling.
+That alone guides scouting and irrigation.
+
+**2. One ground-truth set powers many models.** When you add a *single* labelled
+plot set (`stress` = NS/GFWS), that one input is reused everywhere:
+- **RFE** ranks all bands from it → tells you which wavelengths matter.
+- **Random Forest *and* SVM** are both trained on it.
+- Each is evaluated across **multiple band subsets** (top-4/7/10/12/15).
+- → dozens of model/feature combinations, all from **one** labelling effort —
+  and the best one is auto-selected by Kappa.
+
+**3. The investment compounds.** The same labels and the same ranked bands carry
+forward to next season's flights, to a cheaper multispectral camera (just the
+~670–780 nm bands), and to new fields — so the cost of labelling once is
+amortised across many analyses.
+
+**4. One report ties it together.** `report` bundles NDVI, spectra, band
+ranking, Kappa scores, the stress map, and the moisture map into a single
+shareable PDF — the artefact a researcher actually hands to a funder or agronomy
+team.
+
 > ⚠️ **Scope & validation.** Results depend on your sensor, crop stage, and field
 > conditions. As the original authors note, identified bands should be validated
 > across multiple seasons before operational use. AquaSpectra is a research tool,
@@ -108,6 +146,10 @@ map and the ranked bands. From imagery to insight in minutes.
 - 📦 **Band-separated TIF input** — reads one (large) GeoTIFF per spectral band
   directly from disk, with windowed/chunked reads.
 - 🌱 **NDVI canopy masking** — removes soil background before analysis.
+- 💧 **SWIR moisture (NDWI)** — direct canopy water-content map; coarser SWIR
+  bands are auto-resampled onto the VNIR grid.
+- 🧭 **Label-free indices** — NDVI, NDRE + water-band stress index, and NDWI run
+  with **no training labels** (work even on a single plot).
 - 🎯 **RFE band selection** — ranks all 126 bands; highlights the discriminative
   670–780 nm Red/Red-Edge/NIR region (the paper's key finding).
 - 🤖 **RF & SVM** tuning (80/20 split, 3-fold CV, **Cohen's Kappa**).
@@ -129,25 +171,71 @@ map and the ranked bands. From imagery to insight in minutes.
 **Paper headline result:** SVM + top-10 bands (mostly 670–780 nm, plus two near
 930–940 nm water-absorption) → Kappa ≈ **0.886**.
 
-## 📥 Input data format
+## 📥 Inputs required to run
 
-The drone deliverable is **one GeoTIFF per spectral band** (band-separated, and
-large):
+| Input | Required? | What it is | What it unlocks |
+|---|---|---|---|
+| **Band-separated TIFs** | ✅ Required | One GeoTIFF per spectral band (e.g. `Band_157_672.679nm.tif`), all sharing the same grid/CRS | Loading, NDVI, indices, sampling |
+| **Red + NIR bands** (~670 & ~800 nm) | ✅ Required | Two of the band TIFs | **NDVI** + soil/canopy mask |
+| **Red-edge + water bands** (~730 & ~930 nm) | ⭐ Recommended | More of the band TIFs | Label-free **stress index** |
+| **SWIR band** (~1450–2400 nm) | ⭐ Optional | A coarser-grid TIF (auto-resampled) | **Moisture (NDWI)** map |
+| **Plot labels** | 🎯 Needed for ML | Vector file (GeoJSON/Shapefile) of sub-plots, each tagged `NS` / `GFWS` | Supervised **RF/SVM** + Kappa + stress map |
 
+**Wavelengths** are read automatically from the filename (`Band_<n>_<wavelength>nm.tif`),
+or from `data/wavelengths.csv`, or an explicit `input.bands` list in the config.
+
+> **No labels yet?** You can still run `info`, `ndvi`, and `moisture` (all
+> label-free). Supervised classification (`run` / `predict`) needs **a mix** of
+> labelled plots — some stressed *and* some healthy.
+
+### 📍 Where must the labels come from?
+
+For training the model and mapping **this** field, the plot labels must come from
+the **same farm and the same flight** as the TIFs — the model reads the spectrum
+at each polygon's *exact pixels*, so labels must be **spatially co-registered**
+(same CRS, overlapping the image extent). Labels from a different farm fall on the
+wrong pixels and produce garbage.
+
+| Goal | Where the labels must come from |
+|---|---|
+| Map water stress on **this** field | ✅ Labels from **this** farm/flight, co-registered with the TIFs |
+| Reuse a trained model on a **new** field | ⚠️ Train on Farm A's labels, *apply* the saved model to Farm B's imagery — expect lower accuracy; re-validate |
+| No labels at all | ✅ Use the **label-free** NDVI / NDWI / stress index (relative, works anywhere) |
+
+Cross-farm or cross-season transfer only works when crop, growth stage, sensor,
+calibration, illumination and bands all match — and accuracy still drops. The
+paper itself recommends validating the selected bands across multiple seasons
+before operational use.
+
+### Filename / layout example
 ```
-data/bands/band_001.tif   # 450 nm
-data/bands/band_002.tif   # 454 nm
+data/bands/Band_001_450.000nm.tif   # 450 nm
+data/bands/Band_002_454.000nm.tif   # 454 nm
 ...
-data/bands/band_126.tif   # 950 nm
+data/bands/Band_126_950.000nm.tif   # 950 nm
+data/plots.geojson                  # sub-plot polygons + stress label
 ```
-
-- All band TIFs **must share the same grid** (CRS, transform, width/height).
-- Wavelengths come from `data/wavelengths.csv` (one `wavelength_nm` per row, in
-  file order) **or** an explicit `input.bands` mapping in `config.yaml`.
-- **Labels** are a vector file (`data/plots.geojson` / shapefile) of sub-plot
-  polygons, each with a class attribute (`stress` = `NS` / `GFWS`).
 
 ## 🚀 Quickstart
+
+### One command, your own config (real data)
+
+Point a config at your data, then run the whole pipeline in a single line:
+
+```powershell
+# label-free products (no plot labels needed)
+python -m aquaspectra.cli ndvi     -c config.real.yaml   # NDVI + canopy mask
+python -m aquaspectra.cli moisture -c config.real.yaml   # SWIR NDWI moisture
+
+# full supervised pipeline + report (needs labelled plots)
+python -m aquaspectra.cli run     -c config.real.yaml ; `
+python -m aquaspectra.cli predict -c config.real.yaml ; `
+python -m aquaspectra.cli report  -c config.real.yaml
+```
+
+A ready-to-edit `config.real.yaml` template documents every field (band folder,
+explicit band→wavelength mapping, label vector, NDVI/index/moisture bands,
+model grids, outputs).
 
 ### Easiest: one command (for researchers, Windows)
 
@@ -182,10 +270,13 @@ NDVI red/NIR wavelengths, sampling count, hyper-parameter grids) and run with
 ## 🖥️ CLI
 
 ```powershell
-python -m aquaspectra.cli info    -c config.yaml   # inspect band stack
-python -m aquaspectra.cli sample  -c config.yaml   # sample canopy points
-python -m aquaspectra.cli run     -c config.yaml   # sample + RFE + RF/SVM
-python -m aquaspectra.cli predict -c config.yaml   # stress map GeoTIFF
+python -m aquaspectra.cli info     -c config.yaml   # inspect band stack
+python -m aquaspectra.cli ndvi     -c config.yaml   # NDVI + canopy mask (no labels)
+python -m aquaspectra.cli moisture -c config.yaml   # SWIR NDWI moisture (no labels)
+python -m aquaspectra.cli sample   -c config.yaml   # sample canopy points
+python -m aquaspectra.cli run      -c config.yaml   # sample + RFE + RF/SVM
+python -m aquaspectra.cli predict  -c config.yaml   # stress map GeoTIFF
+python -m aquaspectra.cli report   -c config.yaml   # multi-page PDF report
 ```
 
 ## 🌐 Web UI (Streamlit)
@@ -206,22 +297,26 @@ coverage %) · **Train** (mean NS-vs-GFWS spectra, RFE ranking, RF/SVM Kappa) ·
 
 ## 📂 Outputs (`outputs/`)
 
-| File | Description |
-|---|---|
-| `samples.csv` | sampled spectra (subplot_id, label, per-band reflectance) |
-| `band_ranking.csv` | every band ranked by RFE (rank 1 = most important) |
-| `band_selection_results.csv` | accuracy & Kappa per model × top-k subset |
-| `best_model.joblib` | best estimator + selected band indices + label encoder |
-| `stress_map.tif` | per-pixel classification (1 = GFWS, 2 = NS, 0 = soil/nodata) |
+| File | Description | Needs labels? |
+|---|---|---|
+| `ndvi_real.tif` | NDVI map (canopy vigour, float32 GeoTIFF) | no |
+| `ndwi_real.tif` | SWIR NDWI moisture map (float32 GeoTIFF) | no |
+| `samples.csv` | sampled spectra (subplot_id, label, per-band reflectance) | yes |
+| `band_ranking.csv` | every band ranked by RFE (rank 1 = most important) | yes |
+| `band_selection_results.csv` | accuracy & Kappa per model × top-k subset | yes |
+| `best_model.joblib` | best estimator + selected band indices + label encoder | yes |
+| `stress_map.tif` | per-pixel classification (1 = GFWS, 2 = NS, 0 = soil/nodata) | yes |
+| `AquaSpectra_report.pdf` | multi-page PDF (spectra, ranking, Kappa, stress + moisture maps) | partial |
 
 ## 🗂️ Project layout
 
 ```
 config.yaml / config.test.yaml   paper-faithful / fast configs
+config.real.yaml                  real-data template (edit for your folder)
 pyproject.toml  requirements.txt
 src/aquaspectra/
-  bands.py   ndvi.py   sampling.py   features.py
-  models.py  predict.py  pipeline.py  cli.py  config.py
+  bands.py   ndvi.py   indices.py   sampling.py   features.py
+  models.py  predict.py  pipeline.py  report.py  cli.py  config.py
 app.py                           Streamlit UI
 tools/make_synthetic_data.py     synthetic dataset generator
 tests/                           pytest smoke tests
@@ -242,6 +337,13 @@ tests/                           pytest smoke tests
 | **NDVI** | Normalized Difference Vegetation Index = (NIR − Red) / (NIR + Red); a 0–1 "greenness/vegetation" score used to separate plants from soil. |
 | **NIR (Near-Infrared)** | Light just beyond visible red (~700–1000 nm); healthy leaves reflect a lot of it. |
 | **Red-Edge (RE)** | The sharp rise in reflectance between red and NIR (~680–750 nm); very sensitive to plant stress. |
+| **SWIR (Short-Wave Infrared)** | Light ~1300–2500 nm where liquid water absorbs strongly; the best optical region for measuring canopy *moisture*. |
+| **NDRE (Normalized Difference Red-Edge)** | (NIR − RedEdge)/(NIR + RedEdge); a vigour/chlorophyll index that declines under stress. Used in the label-free stress index. |
+| **NDWI (Normalized Difference Water Index)** | (NIR − SWIR)/(NIR + SWIR); a canopy *water-content* index (higher = wetter). The basis of the `moisture` command. |
+| **Water-band ratio (WBR)** | NIR ÷ water-absorption band (~930 nm); rises as leaf water falls. Combined with NDRE for the label-free stress index. |
+| **Label-free index** | A physics-based spectral index (NDRE, WBR, NDWI) that estimates *relative* stress/moisture **without any training labels** — works even on a single plot. |
+| **Ground truth / labels** | Field-verified plot tags (stressed vs healthy) that supervised models learn from. The one input you must obtain to train RF/SVM. |
+| **Resampling (WarpedVRT)** | Reprojecting a raster onto another grid; used to align coarser SWIR bands to the VNIR grid so NDWI can be computed. |
 | **Canopy** | The leafy top layer of the crop (as opposed to soil/background). |
 | **Sub-plot** | One small managed cell of the field trial; here each holds a different maize variety. |
 | **NS (No-Stress)** | The control group — plants given normal water. |
