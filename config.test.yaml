@@ -1,0 +1,51 @@
+# Fast config for end-to-end validation on the synthetic dataset.
+# Smaller hyper-parameter grids and a larger RFE step so a full run finishes
+# in well under a minute. Use config.yaml for the paper-faithful settings.
+input:
+  band_dir: "data/bands"
+  band_glob: "*.tif"
+  wavelengths_csv: "data/wavelengths.csv"
+  bands: []
+  block_size: 1024
+
+labels:
+  vector_file: "data/plots.geojson"
+  class_field: "stress"
+  ns_value: "NS"
+  gfws_value: "GFWS"
+  subplot_field: "subplot_id"
+
+ndvi:
+  enabled: true
+  red_nm: 670.0
+  nir_nm: 800.0
+  threshold: 0.4
+
+sampling:
+  points_per_subplot: 80
+  random_state: 42
+
+feature_selection:
+  method: "rfe"
+  top_k_list: [4, 10]
+  estimator: "random_forest"
+  rfe_step: 8
+
+model:
+  test_size: 0.20
+  random_state: 42
+  cv_folds: 3
+  random_forest:
+    n_estimators_grid: [100, 200]
+  svm:
+    kernel: "rbf"
+    C_grid: [1, 10]
+    gamma_grid: [0.1, 0.01]
+
+output:
+  dir: "outputs"
+  samples_csv: "samples.csv"
+  results_csv: "band_selection_results.csv"
+  band_ranking_csv: "band_ranking.csv"
+  model_file: "best_model.joblib"
+  stress_map: "stress_map.tif"

@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+message: >-
+  This software is an independent implementation of the methodology described
+  in the referenced paper. If you use AquaSpectra, please cite both this
+  repository and the original paper.
+title: "AquaSpectra: Drone Hyperspectral Detection of Water Stress in Maize"
+abstract: >-
+  AquaSpectra is an open-source reimplementation of the IGARSS 2022 methodology
+  for detecting grain-fill water stress in maize from drone-based hyperspectral
+  imagery, using NDVI canopy masking, Recursive Feature Elimination band
+  selection, and Random Forest / SVM classification.
+type: software
+authors:
+  - given-names: Ashik
+    family-names: Kuppili
+license: MIT
+repository-code: "https://github.com/AshikKuppili/aquaspectra-maize-hsi"
+keywords:
+  - hyperspectral
+  - remote sensing
+  - precision agriculture
+  - maize
+  - water stress
+  - drone
+  - band selection
+references:
+  - type: conference-paper
+    title: >-
+      Detection of Crop Water Stress in Maize using Drone Based Hyperspectral
+      Imaging
+    authors:
+      - given-names: Jayantrao
+        family-names: Mohite
+      - given-names: Suryakant
+        family-names: Sawant
+      - given-names: Rishabh
+        family-names: Agarwal
+      - given-names: Ankur
+        family-names: Pandit
+      - given-names: Srinivasu
+        family-names: Pappula
+    collection-title: >-
+      IGARSS 2022 - 2022 IEEE International Geoscience and Remote Sensing
+      Symposium
+    year: 2022
+    start: 5957
+    end: 5960
+    doi: 10.1109/IGARSS46834.2022.9884686
+    publisher:
+      name: IEEE

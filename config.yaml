@@ -1,0 +1,92 @@
+# =============================================================================
+# Configuration for Maize Crop Water Stress Detection
+# (Replicates IGARSS 2022 paper: Mohite et al., TCS Research)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# INPUT DATA
+# -----------------------------------------------------------------------------
+# The hyperspectral scene is delivered as ONE TIF PER BAND (band-separated),
+# and the files are large. Point `band_dir` at the folder holding them.
+#
+# Two ways to map files -> wavelengths:
+#   1. Provide an explicit `bands` list below (filename + wavelength_nm), OR
+#   2. Leave `bands` empty and rely on `band_glob` + `wavelengths_csv`
+#      (files are sorted naturally and zipped with the wavelength list).
+input:
+  band_dir: "data/bands"          # folder containing per-band .tif files
+  band_glob: "*.tif"              # glob to discover band files when `bands` is empty
+  # Optional CSV with a single column `wavelength_nm` (one row per band, in file order)
+  wavelengths_csv: "data/wavelengths.csv"
+  # Explicit mapping (takes precedence over band_glob/wavelengths_csv if non-empty):
+  bands: []
+  # Example explicit mapping:
+  #   - {file: "band_001.tif", wavelength_nm: 450.0}
+  #   - {file: "band_002.tif", wavelength_nm: 454.0}
+
+  # Block size (pixels) for windowed/chunked reading of large rasters.
+  block_size: 1024
+
+# -----------------------------------------------------------------------------
+# LABELS  (which pixels are No-Stress vs Grain-Fill Water Stress)
+# -----------------------------------------------------------------------------
+# Provide a vector file (GeoJSON / Shapefile) of sub-plot polygons. Each feature
+# must carry a class attribute. The paper uses 2 classes: NS and GFWS.
+labels:
+  vector_file: "data/plots.geojson"
+  class_field: "stress"           # attribute holding the class label
+  ns_value: "NS"                  # value meaning "no stress"
+  gfws_value: "GFWS"              # value meaning "grain-fill water stress"
+  # Optional per-subplot id field (for variety-wise / grouped analysis)
+  subplot_field: "subplot_id"
+
+# -----------------------------------------------------------------------------
+# CANOPY MASKING (remove soil background via NDVI)
+# -----------------------------------------------------------------------------
+ndvi:
+  enabled: true
+  red_nm: 670.0                   # nearest band used as RED
+  nir_nm: 800.0                   # nearest band used as NIR
+  threshold: 0.4                  # keep pixels with NDVI >= threshold (canopy)
+
+# -----------------------------------------------------------------------------
+# SAMPLING
+# -----------------------------------------------------------------------------
+sampling:
+  points_per_subplot: 200         # paper: 200 random canopy points per sub-plot
+  random_state: 42
+
+# -----------------------------------------------------------------------------
+# FEATURE SELECTION (Recursive Feature Elimination)
+# -----------------------------------------------------------------------------
+feature_selection:
+  method: "rfe"                   # rfe
+  # Number of top bands to evaluate (paper reports Top 4/7/10/12/15)
+  top_k_list: [4, 7, 10, 12, 15]
+  estimator: "random_forest"      # estimator that drives RFE ranking
+  rfe_step: 1                     # bands dropped per RFE iteration (int or 0<float<1)
+
+# -----------------------------------------------------------------------------
+# MODELLING
+# -----------------------------------------------------------------------------
+model:
+  test_size: 0.20                 # paper: 80/20 split
+  random_state: 42
+  cv_folds: 3                     # paper: 3-fold CV
+  random_forest:
+    n_estimators_grid: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+  svm:
+    kernel: "rbf"
+    C_grid: [0.1, 1, 10, 100]
+    gamma_grid: [1, 0.1, 0.01, 0.001]
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+output:
+  dir: "outputs"
+  samples_csv: "samples.csv"
+  results_csv: "band_selection_results.csv"
+  band_ranking_csv: "band_ranking.csv"
+  model_file: "best_model.joblib"
+  stress_map: "stress_map.tif"

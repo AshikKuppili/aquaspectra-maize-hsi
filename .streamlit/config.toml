@@ -1,0 +1,11 @@
+[server]
+# Large hyperspectral band TIFs are NOT uploaded through the browser — the UI
+# reads them directly from a server-side folder path. This limit only applies
+# to small optional uploads (e.g. a plots.geojson). Raised well above the
+# 200 MB default just in case.
+maxUploadSize = 2048
+maxMessageSize = 2048
+
+[theme]
+base = "light"
+primaryColor = "#2e7d32"

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+outputs/*.tif
+outputs/*.csv
+outputs/*.joblib
+outputs/*.txt
+outputs/*.log
+data/bands/
+*.egg-info/
+.streamlit/secrets.toml
+
+# Do not redistribute the copyrighted IEEE paper
+8.pdf
+*.pdf

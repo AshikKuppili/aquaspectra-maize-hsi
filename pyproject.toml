@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aquaspectra-maize-hsi"
+version = "0.1.0"
+description = "AquaSpectra - drone hyperspectral detection of grain-fill water stress in maize (IGARSS 2022 replication)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Ashik Kuppili" }]
+keywords = [
+    "hyperspectral", "remote-sensing", "precision-agriculture", "maize",
+    "water-stress", "drone", "uav", "band-selection", "rfe", "ndvi",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scipy>=1.11",
+    "rasterio>=1.3",
+    "geopandas>=0.14",
+    "shapely>=2.0",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "joblib>=1.3",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit>=1.30"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+aquaspectra = "aquaspectra.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AshikKuppili/aquaspectra-maize-hsi"
+Repository = "https://github.com/AshikKuppili/aquaspectra-maize-hsi"
+Paper = "https://doi.org/10.1109/IGARSS46834.2022.9884686"
+
+[tool.setuptools.packages.find]
+where = ["src"]
