@@ -67,6 +67,42 @@ to detect maize water stress reliably.
 
 ---
 
+## 🌾 How this helps agriculture researchers
+
+AquaSpectra turns raw drone hyperspectral flights into actionable crop-stress
+insight — without writing code. It is useful for:
+
+- **💧 Precision irrigation.** Spot water stress *early* (before visible wilting)
+  and exactly *where* it occurs, so water is applied only where needed — saving
+  water and protecting yield during the sensitive grain-fill stage.
+- **🧬 Variety screening & phenotyping.** Compare how dozens of maize varieties
+  (sub-plots) respond to water stress, helping breeders identify
+  drought-tolerant lines objectively and at scale.
+- **💸 Cheaper future surveys.** By pinpointing the *handful* of wavelengths
+  (≈670–780 nm) that actually matter, researchers can justify using simpler,
+  lower-cost multispectral cameras instead of full hyperspectral rigs.
+- **🛰️ Whole-field coverage.** Replaces a few point measurements (soil sensors,
+  manual leaf sampling) with a complete, spatially-explicit **stress map** of
+  the entire field — capturing variability sensors miss.
+- **⏱️ Fast, non-destructive, repeatable.** No cutting leaves or digging soil;
+  the same analysis can be re-run each flight to track stress over time.
+- **🔬 Reproducible science.** A documented, open pipeline (NDVI → RFE → RF/SVM →
+  Kappa) others can cite, audit, and extend to new crops, stages, or seasons.
+- **📊 Decision-ready outputs.** CSV tables (sample spectra, band rankings,
+  model accuracy/Kappa) and a GeoTIFF map drop straight into GIS tools,
+  reports, or further statistical analysis.
+
+**Typical workflow for a researcher:** fly the field → drop the per-band TIFs in
+a folder → mark NS/GFWS sub-plot boundaries → run `setup.ps1` → read the stress
+map and the ranked bands. From imagery to insight in minutes.
+
+> ⚠️ **Scope & validation.** Results depend on your sensor, crop stage, and field
+> conditions. As the original authors note, identified bands should be validated
+> across multiple seasons before operational use. AquaSpectra is a research tool,
+> not a substitute for agronomic judgement.
+
+---
+
 ## ✨ Highlights
 
 - 📦 **Band-separated TIF input** — reads one (large) GeoTIFF per spectral band
